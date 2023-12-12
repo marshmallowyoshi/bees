@@ -80,5 +80,4 @@ for f in all_files:
 
     # Perform the transform
     features = pipeline(waveform)
-
-
+    
