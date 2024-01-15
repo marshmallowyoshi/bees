@@ -27,3 +27,5 @@ with open('forest.bin', 'wb') as f:
             value = b''
         
         f.write(depth + threshold + feature + value)
+        # print(depth, threshold, feature, value)
+        # print(depth+threshold+feature+value)
