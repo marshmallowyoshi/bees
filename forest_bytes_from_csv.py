@@ -11,7 +11,7 @@ with open('forest.bin', 'wb') as f:
         depth = int(row[0]).to_bytes(1, 'big')
 
         if row[1] != '':
-            threshold = np.array(float(row[1])).tobytes()
+            threshold = np.float32(row[1]).tobytes()
         else:
             threshold = b''
 
@@ -22,10 +22,12 @@ with open('forest.bin', 'wb') as f:
 
         if row[3] != '':
             
-            value = np.array([int(x) for x in row[3].strip('.][').split('. ')]).tobytes()
+            value = np.array([np.int16(x) for x in row[3].strip('.][').split('. ')]).tobytes()
         else:
             value = b''
         
         f.write(depth + threshold + feature + value)
+        # print(len(depth + threshold + feature + value))
         # print(depth, threshold, feature, value)
         # print(depth+threshold+feature+value)
+        
