@@ -25,7 +25,6 @@ def links_to_pointers(
         return b''
     else:
         branch_idx = byte_count(all_bytes_list, idx, branches[1])
-        print(branch_idx)
         return np.int16(branch_idx).tobytes()
     
 def live_traversal(
@@ -36,7 +35,7 @@ def live_traversal(
     live_branches = all_branches[::-1]
     for idx, branch in enumerate(live_branches):
         live_bytes[idx] = live_bytes[idx] + [links_to_pointers(branch, live_bytes[::-1], len(live_bytes) - idx)]
-    return live_bytes
+    return live_bytes[::-1]
 
 FILE_NAME = 'linked_forest.csv'
 BINARY_NAME = 'linked_forest.bin'
@@ -84,4 +83,5 @@ with open(BINARY_NAME, 'wb') as f:
     all_bytes_list = live_traversal(all_bytes_list, branch_list)
     # print(all_bytes_list)
     all_bytes = b''.join([b''.join(x) for x in all_bytes_list])
+    print(all_bytes)
     f.write(all_bytes)
