@@ -5,6 +5,8 @@
 
 #define MAX 100
 
+int read_braanch(FILE *fptr1, char str[]);
+
 int main(int argc, char* argv[])
 {
     FILE* fptr1;
@@ -20,4 +22,10 @@ int main(int argc, char* argv[])
     } 
 
     
+}
+
+int read_branch(FILE *fptr1, char str[])
+{
+    
+    return 0;
 }
