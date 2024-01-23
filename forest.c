@@ -18,8 +18,6 @@ branch_t read_branch(uint8_t* ptr);
 leaf_t read_leaf(uint8_t* ptr);
 uint32_t find_next_tree(uint8_t* ptr, uint32_t sz, uint32_t index);
 void print_list(node_t * head);
-float_t* predict_proba(node_t * current, float_t args[NUM_CLASSES]);
-float_t* predict_proba_forest(float_t args[FOREST_SIZE][NUM_CLASSES]);
 
 int main(void)
 {
@@ -147,90 +145,34 @@ uint32_t find_next_tree(uint8_t* ptr, uint32_t sz, uint32_t index)
 void print_list(node_t * head) 
 {
     node_t * current = head;
-    float_t total[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    int16_t tree_count = 0;
-    // float_t total_raw[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    // float_t sample_sum = 0;
-    // int16_t votes[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    // int16_t temp_max = 0;
-    // int16_t temp_max_idx = 0;
-    // float_t prob_temp[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    // float_t prob_sum[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    // float_t prob_max = 0;
-    // int16_t vote_max = 0;
-    // int16_t vote_max_idx = 0;
-
-    while (current->next != NULL) {
-        current = current->next;
-        tree_count += 1;
-    }
-
-    float_t total_proba[tree_count];
+    int16_t sample_count[NUM_CLASSES];
+    int16_t total = 0;
+    int16_t tree_index = 0;
+    float_t total_proba[FOREST_SIZE][NUM_CLASSES];
+    float_t probs[NUM_CLASSES];
 
     while (current != NULL) {
-        // temp_max = 0;
-        // temp_max_idx = 0;
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < NUM_CLASSES; i++) {
             printf("%d ", current->val[i]);
-            total[i] += (current->val[i]);
-            // if (temp_max < current->val[i]) {
-            //         temp_max = current->val[i];
-            //         temp_max_idx = i;
-            //     } 
+            sample_count[i] = (current->val[i]);
+            total += current->val[i];
         }
-    //     printf("| %d | " , temp_max_idx);
-    //     sample_sum = current->val[0] + current->val[1] + current->val[2] + current->val[3] + current->val[4] + current->val[5] + current->val[6] + current->val[7] + current->val[8] + current->val[9];
-    //     for (int i = 0; i < 10; i++) {
-    //         prob_temp[i] = current->val[i] / sample_sum;
-    //         prob_sum[i] = (prob_sum[i] + prob_temp[i]) / 10;
-    //     }
-    //     printf("%f", prob_temp[temp_max_idx]);
-    //     votes[temp_max_idx] = votes[temp_max_idx] + 1;
         current = current->next;
         printf("\n");
+        for (int i = 0; i < NUM_CLASSES; i++) {
+            total_proba[tree_index][i] = (float_t)sample_count[i] / total;
+            printf("%f ", total_proba[tree_index][i]);
+        }
+        printf("\n\n");
+        tree_index++;
+        total = 0;
     }
-    // sample_sum = total[0] + total[1] + total[2] + total[3] + total[4] + total[5] + total[6] + total[7] + total[8] + total[9];
-    // for (int i = 0; i < 10; i++) {
-    //     total_raw[i] = total[i];
-    //     total[i] = total[i];
 
-    //     if (prob_max < prob_sum[i]) {
-    //         prob_max = prob_sum[i];
-    //         temp_max_idx = i;
-    //     }
-    //     if (vote_max < votes[i]) {
-    //         vote_max = votes[i];
-    //         vote_max_idx = i;
-    //     }
-    // }
-    // printf("Raw: %f %f %f %f %f %f %f %f %f %f\n", total_raw[0], total_raw[1], total_raw[2], total_raw[3], total_raw[4], total_raw[5], total_raw[6], total_raw[7], total_raw[8], total_raw[9]);
-    // printf( "Percentage: %f %f %f %f %f %f %f %f %f %f\n", total[0], total[1], total[2], total[3], total[4], total[5], total[6], total[7], total[8], total[9]);
-    // printf("Votes: %d %d %d %d %d %d %d %d %d %d\n", votes[0], votes[1], votes[2], votes[3], votes[4], votes[5], votes[6], votes[7], votes[8], votes[9]);
-    // printf("Probabilities: %f %f %f %f %f %f %f %f %f %f\n", prob_sum[0], prob_sum[1], prob_sum[2], prob_sum[3], prob_sum[4], prob_sum[5], prob_sum[6], prob_sum[7], prob_sum[8], prob_sum[9]);
-    // printf("Weighted Vote: %d %s\n", temp_max_idx, classes[temp_max_idx]);
-    // printf("Direct Vote: %d %s\n", vote_max_idx, classes[vote_max_idx]);
-}
-
-float_t* predict_proba(node_t * current, float_t args[NUM_CLASSES])
-{
-    int16_t sample_count = 0;
-    for (int i = 0; i < NUM_CLASSES; i++) {
-        sample_count += current->val[i];
-    }
-    for (int i = 0; i < NUM_CLASSES; i++) {
-        args[i] = (float_t)current->val[i] / sample_count;
-    }
-    return args;
-}
-
-float_t* predict_proba_forest(float_t args[FOREST_SIZE][NUM_CLASSES])
-{
-    float_t probs[NUM_CLASSES];
     for (int i = 0; i < NUM_CLASSES; i++) {
         probs[i] = 0;
         for (int j = 0; j < FOREST_SIZE; j++) {
-            probs[i] += args[j][i] / FOREST_SIZE;
+            probs[i] += total_proba[j][i] / FOREST_SIZE;
         }
     }
-    return probs;
+    printf("\n probabilities: %f %f %f %f %f %f %f %f %f %f\n", probs[0], probs[1], probs[2], probs[3], probs[4], probs[5], probs[6], probs[7], probs[8], probs[9]);
 }
