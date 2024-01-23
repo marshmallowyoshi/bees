@@ -129,7 +129,7 @@ def create_array_for_c(all_bytes, forest_structure, c_file='forest_data.c', byte
 
 
 
-FILE_NAME = 'linked_forest.csv'
+FILE_NAME = 'linked_forest_small.csv'
 BINARY_NAME = 'temp.bin'
 
 final_bytes = forest_to_binary(FILE_NAME, BINARY_NAME, write_to_file=False)
