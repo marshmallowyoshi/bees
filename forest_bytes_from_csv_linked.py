@@ -41,7 +41,7 @@ def byte_struct(forest):
             # depth and value
             depth = (-1 * int(row[0])).to_bytes(1, 'big', signed=True)
 
-            value = np.array([np.int16(x) for x in row[3].strip('.][').split('. ')]).tobytes()
+            value = np.array([np.int16(x) for x in row[3].strip('.][').replace('\n', '').split(', ')]).tobytes()
         else:
             depth = int(row[0]).to_bytes(1, 'big', signed=True)
 
@@ -103,7 +103,11 @@ def get_forest_structure(file_name):
     return [True if row[4] != '' else False for row in forest][1:]
             
 
-def create_array_for_c(all_bytes, forest_structure, c_file='forest_data.c', byte_format='hex'):
+def create_array_for_c(all_bytes, forest_structure, metadata, c_file_names='forest_data', byte_format='hex'):
+
+    c_file = "".join((c_file_names, '.c'))
+    h_file = "".join((c_file_names, '.h'))
+
     ptr = 0
     if byte_format == 'hex':
         byte_list = bytes_to_hex(all_bytes)
@@ -112,8 +116,30 @@ def create_array_for_c(all_bytes, forest_structure, c_file='forest_data.c', byte
     else:
         raise ValueError
     
+    with open(metadata, 'r', encoding='utf-8-sig') as f:
+        for line in f:
+            # if line.startswith('largest_sample_size'):
+            #     largest_sample_size = int(line.split(':')[1].strip())
+            if line.startswith('feature_count'):
+                feature_count = int(line.split(':')[1].strip())
+            elif line.startswith('tree_count'):
+                tree_count = int(line.split(':')[1].strip())
+            elif line.startswith('class_count'):
+                class_count = int(line.split(':')[1].strip())
+            elif line.startswith('classes'):
+                classes = [x for x in line.split(':')[1].strip().split(', ')]
+            # elif line.startswith('max_depth'):
+            #     max_depth = int(line.split(':')[1].strip())
+    
     with open(c_file, 'w', encoding='utf-8-sig') as f:
         f.write('#include <stdint.h>\n')
+
+        f.write(f'char *classes[{class_count}] = ')
+        f.write('{')
+        for c in classes:
+            f.write(f'\"{c}\",\n')
+        f.write('};\n')
+
         f.write('uint8_t forest_structure[] = {\n')
         for row in forest_structure:
             if row:
@@ -121,17 +147,54 @@ def create_array_for_c(all_bytes, forest_structure, c_file='forest_data.c', byte
                 ptr += 8
                 f.write(f'{", ".join([str(v) for v in vals])},\n')
             else:
-                vals = byte_list[ptr:ptr+21]
-                ptr += 21
+                vals = byte_list[ptr:(ptr+1+(2*class_count))]
+                ptr += 1+(2*class_count)
                 f.write(f'{", ".join([str(v) for v in vals])},\n')
         f.write('};\n')
+    
+
+    with open(h_file, 'w', encoding='utf-8-sig') as f:
+        f.write('#include <stdint.h>\n')
+        f.write(f'#define FEATURE_COUNT {feature_count}\n')
+        f.write(f'#define FOREST_SIZE {tree_count}\n')
+        f.write(f'#define NUM_CLASSES {class_count}\n\n')
+
+        # f.write('typedef structure {\n')
+        # if max_depth < 128:
+        #     f.write('    int8_t depth;\n')
+        # else:
+        #     f.write('    int16_t depth;\n')
+        # f.write('    float threshold;\n')
+        # if feature_count < 256:
+        #     f.write('    uint8_t feature;\n')
+        # else:
+        #     f.write('    uint16_t feature;\n')
+        # if len(byte_list) < 32768:
+        #     f.write('    int16_t next_node;\n')
+        # else:
+        #     f.write('    int32_t next_node;\n')
+        # f.write('} branch_t;\n\n')
+
+        # f.write('typedef structure {\n')
+        # if max_depth < 128:
+        #     f.write('    int8_t depth;\n')
+        # else:
+        #     f.write('    int16_t depth;\n')
+        # if largest_sample_size < 32768:
+        #     f.write(f'    int16_t value[{class_count}];\n')
+        # else:
+        #     f.write(f'    int32_t value[{class_count}];\n')
+
+
+    return 0
 
 
 
 
-FILE_NAME = 'linked_forest_small.csv'
-BINARY_NAME = 'temp.bin'
 
-final_bytes = forest_to_binary(FILE_NAME, BINARY_NAME, write_to_file=False)
+# FILE_NAME = 'temp_forest.csv'
+# BINARY_NAME = 'temp.bin'
 
-create_array_for_c(final_bytes, get_forest_structure(FILE_NAME))
+# final_bytes = forest_to_binary(FILE_NAME, BINARY_NAME, write_to_file=False)
+
+# create_array_for_c(final_bytes, get_forest_structure(FILE_NAME))

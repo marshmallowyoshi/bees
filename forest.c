@@ -6,12 +6,8 @@
 #include <stdbool.h>
 
 #include "forest.h"
+#include "forest_data.h"
 #include "forest_data.c"
-
-
-#define _CRT_SECURE_NO_WARNINGS
-
-#define MAX 100
 
 int8_t read_depth(uint8_t* ptr);
 branch_t read_branch(uint8_t* ptr);
@@ -85,8 +81,6 @@ int8_t read_depth(uint8_t* ptr)
 {
     int8_t d;
     d = (int8_t)*ptr;
-    // fread(&d, sizeof(int8_t), 1, ptr);
-    // fseek(ptr, -1, SEEK_CUR);
     return d;
 }
 
@@ -118,8 +112,6 @@ leaf_t read_leaf(uint8_t* ptr)
         l.score[i] = (int16_t)((*ptr++));
         l.score[i] |= (int16_t)(*ptr++) << 8;
     }
-    // fread(&l.depth, sizeof(int8_t), 1, ptr);
-    // fread(&l.score, sizeof(int16_t), 10, ptr);
     return l;
 }
 
@@ -171,7 +163,7 @@ void print_list(node_t * head)
     for (int i = 0; i < NUM_CLASSES; i++) {
         probs[i] = 0;
         for (int j = 0; j < FOREST_SIZE; j++) {
-            probs[i] += total_proba[j][i] / FOREST_SIZE;
+            probs[i] += (float_t)total_proba[j][i] / FOREST_SIZE;
         }
     }
     printf("\n probabilities: %f %f %f %f %f %f %f %f %f %f\n", probs[0], probs[1], probs[2], probs[3], probs[4], probs[5], probs[6], probs[7], probs[8], probs[9]);

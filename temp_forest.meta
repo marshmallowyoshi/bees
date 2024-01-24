@@ -1,0 +1,6 @@
+﻿largest_sample_size: 5155
+feature_count: 4
+tree_count: 10
+class_count: 20
+max_depth: 6
+classes: Bombus, Bombus bohemicus, Bombus distinguendus, Bombus hortorum, Bombus humilis, Bombus hypnorum, Bombus jonellus, Bombus lapidarius, Bombus lucorum, Bombus monticola, Bombus muscorum, Bombus pascuorum, Bombus pratorum, Bombus ruderatus, Bombus rupestris, Bombus sylvarum, Bombus sylvestris, Bombus terrestris, Bombus terrestris audax, Bombus vestalis, 
