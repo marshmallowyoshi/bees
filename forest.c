@@ -5,24 +5,34 @@
 #include <string.h>
 #include <stdbool.h>
 
-// #include "forest.h"
 #include "forest_data.h"
 #include "forest_data.c"
 
 int16_t branch_size = sizeof(depth_t)+sizeof(float)+sizeof(feature_t)+sizeof(next_node_t);
 int16_t leaf_size = sizeof(depth_t)+(sizeof(score_t)*NUM_CLASSES);
 
+float * predict(float_t samples[FEATURE_COUNT]);
 depth_t read_depth(uint8_t* ptr);
 branch_t read_branch(uint8_t* ptr);
 leaf_t read_leaf(uint8_t* ptr);
 uint32_t find_next_tree(uint8_t* ptr, uint32_t sz, uint32_t index);
-void print_list(node_t * head);
+float * predict_proba(node_t * head);
+int predict_index(float * probs);
 
 int main(void)
 {
-    // temporary samples
-    float_t samples[4] = {0.22044,  0.440961,         -0.96901,         0.247022};
+    float_t samples[FEATURE_COUNT] = {0.22044,  0.440961,         -0.96901,         0.247022};
+    float * ret;
+    int index;
+    ret = predict(samples);
+    index = predict_index(ret);
+    printf("%s\n", classes[index]);    
 
+    return 0;
+}
+
+float * predict(float_t samples[FEATURE_COUNT])
+{
     // variables
     uint8_t* fptr1;
     uint32_t index = 0;
@@ -31,14 +41,11 @@ int main(void)
     depth_t depth;
     uint32_t sz;
     bool first = true;
+    float *proba;
     
     // nodes in linked list represent trees in forest
     node_t * head = NULL;
     head = (node_t *) malloc(NUM_CLASSES);
-
-    if (head == NULL) {
-        return 1;
-    }
 
     head->next = NULL;
     node_t * current = head;
@@ -46,10 +53,7 @@ int main(void)
     // read forest from file
     fptr1 = forest_structure;
     sz = sizeof(forest_structure);
-  
-    if (fptr1 == NULL) { 
-        return 1; 
-    } 
+
     while (index < sz) {
         depth = read_depth(&fptr1[index]);
         if (depth < 0) {
@@ -77,8 +81,8 @@ int main(void)
             }
         }
     }
-    print_list(head);
-    return 0;
+    proba = predict_proba(head);
+    return proba;
 }
 
 depth_t read_depth(uint8_t* ptr)
@@ -103,8 +107,17 @@ branch_t read_branch(uint8_t* ptr)
     u.t[3] = (*ptr++);
     b.threshold = u.f;
     b.feature = *ptr++;
-    b.next_node = (int16_t)((*ptr++));                                                      // TODO add case for int32
-    b.next_node |= (int16_t)(*ptr++) << 8;
+    if (sizeof(next_node_t) == 2) {
+        b.next_node = (int16_t)((*ptr++));
+        b.next_node |= (int16_t)(*ptr++) << 8;
+    }
+    else if (sizeof(next_node_t) == 4) {
+        b.next_node = (int32_t)((*ptr++));                                                      // TODO test this case
+        b.next_node |= (int32_t)(*ptr++) << 8;
+        b.next_node |= (int32_t)(*ptr++) << 16;
+        b.next_node |= (int32_t)(*ptr++) << 24;
+    }
+
     return b;
 }
 
@@ -112,10 +125,21 @@ leaf_t read_leaf(uint8_t* ptr)
 {
     leaf_t l;
     l.depth = *ptr++;
-    for (int i = 0; i < NUM_CLASSES; i++) {
-        l.score[i] = (int16_t)((*ptr++));                                                      // TODO add case for int32
-        l.score[i] |= (int16_t)(*ptr++) << 8;
+    if (sizeof(score_t) == 2) {
+        for (int i = 0; i < NUM_CLASSES; i++) {
+            l.score[i] = (score_t)((*ptr++));                                                      // TODO test this case
+            l.score[i] |= (score_t)(*ptr++) << 8;
+        }   
     }
+    else if (sizeof(score_t) == 4) {
+        for (int i = 0; i < NUM_CLASSES; i++) {
+            l.score[i] = (score_t)((*ptr++));                                                      // TODO test this case
+            l.score[i] |= (score_t)(*ptr++) << 8;
+            l.score[i] |= (score_t)(*ptr++) << 16;
+            l.score[i] |= (score_t)(*ptr++) << 24;
+        }
+    }
+
     return l;
 }
 
@@ -138,28 +162,24 @@ uint32_t find_next_tree(uint8_t* ptr, uint32_t sz, uint32_t index)
     return index;
 }
 
-void print_list(node_t * head) 
+float * predict_proba(node_t * head) 
 {
     node_t * current = head;
     int16_t sample_count[NUM_CLASSES];
     int32_t total = 0;
     int16_t tree_index = 0;
     float_t total_proba[FOREST_SIZE][NUM_CLASSES];
-    float_t probs[NUM_CLASSES];
+    float_t *probs = malloc(NUM_CLASSES * sizeof(float_t));
 
     while (current != NULL) {
         for (int i = 0; i < NUM_CLASSES; i++) {
-            // printf("%d ", current->val[i]);
             sample_count[i] = (current->val[i]);
             total += current->val[i];
         }
         current = current->next;
-        // printf("\n");
         for (int i = 0; i < NUM_CLASSES; i++) {
             total_proba[tree_index][i] = (float_t)sample_count[i] / total;
-            // printf("%f ", total_proba[tree_index][i]);
         }
-        // printf("\n\n");
         tree_index++;
         total = 0;
     }
@@ -170,5 +190,17 @@ void print_list(node_t * head)
             probs[i] += (float_t)total_proba[j][i] / FOREST_SIZE;
         }
     }
-    printf("\n probabilities: %f %f %f %f %f %f %f %f %f %f\n", probs[0], probs[1], probs[2], probs[3], probs[4], probs[5], probs[6], probs[7], probs[8], probs[9]);
+
+    return probs;
+}
+
+int predict_index(float *probs)
+{
+    int index = 0;
+    for (int i = 0; i < NUM_CLASSES; i++) {
+        if (probs[i] > probs[index]) {
+            index = i;
+        }
+    }
+    return index;
 }

@@ -4,7 +4,7 @@ import imblearn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import preprocessing, model_selection
 
-def train_forest(df):
+def train_forest(df, verbose=False):
     bombus_df = df[['id', 'latitude', 'longitude',
                     'scientific_name', 'observed_on']]
 
@@ -43,8 +43,10 @@ def train_forest(df):
     rf = RandomForestClassifier(n_estimators=10, max_depth=6, random_state=0)
     rf.fit(x_train, np.ravel(y_train))
 
-    print(f'score: {rf.score(x_test, y_test)}\n')
-    print(f'predict_proba: {rf.predict_proba([[0.22044,  0.440961,         -0.96901,         0.247022]])}')
+    if verbose:
+        print(f'score: {rf.score(x_test, y_test)}\n')
+        print(f'probabilities: {rf.predict_proba([[0.22044,  0.440961,         -0.96901,         0.247022]])}')
+        print(f'prediction: {rf.predict([[0.22044,  0.440961,         -0.96901,         0.247022]])}')
     return rf, x_test, y_test
 
 def cyclic_encode(df, col, max_val):
