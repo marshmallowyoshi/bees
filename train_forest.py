@@ -3,7 +3,6 @@ import numpy as np
 import imblearn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import preprocessing, model_selection
-from sklearn.tree import _tree
 
 def train_forest(df):
     bombus_df = df[['id', 'latitude', 'longitude',
@@ -45,6 +44,7 @@ def train_forest(df):
     rf.fit(x_train, np.ravel(y_train))
 
     print(f'score: {rf.score(x_test, y_test)}\n')
+    print(f'predict_proba: {rf.predict_proba([[0.22044,  0.440961,         -0.96901,         0.247022]])}')
     return rf, x_test, y_test
 
 def cyclic_encode(df, col, max_val):
@@ -127,13 +127,3 @@ def forest_struct_to_csv(rf, file_name):
     new_forest.to_csv("".join((file_name, '.csv')), index=False)
     write_metadata(rf, "".join((file_name, '.meta')))
     return new_forest
-# DATA_SOURCE = "observations-386953.csv"
-# FILE_NAME = "temp_forest"
-
-# inaturalist_bombus_observations = pd.read_csv(DATA_SOURCE)
-
-# rf, x_test, y_test = train_forest(inaturalist_bombus_observations)
-
-# forest_struct_to_csv(rf, FILE_NAME)
-
-# print(rf.predict_proba([[0.22044,  0.440961,         -0.96901,         0.247022]]))

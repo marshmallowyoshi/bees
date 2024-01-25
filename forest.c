@@ -5,11 +5,14 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "forest.h"
+// #include "forest.h"
 #include "forest_data.h"
 #include "forest_data.c"
 
-int8_t read_depth(uint8_t* ptr);
+int16_t branch_size = sizeof(depth_t)+sizeof(float)+sizeof(feature_t)+sizeof(next_node_t);
+int16_t leaf_size = sizeof(depth_t)+(sizeof(score_t)*NUM_CLASSES);
+
+depth_t read_depth(uint8_t* ptr);
 branch_t read_branch(uint8_t* ptr);
 leaf_t read_leaf(uint8_t* ptr);
 uint32_t find_next_tree(uint8_t* ptr, uint32_t sz, uint32_t index);
@@ -17,20 +20,21 @@ void print_list(node_t * head);
 
 int main(void)
 {
+    // temporary samples
+    float_t samples[4] = {0.22044,  0.440961,         -0.96901,         0.247022};
+
+    // variables
     uint8_t* fptr1;
     uint32_t index = 0;
     branch_t new_branch;
     leaf_t new_leaf;
-    int8_t depth;
-    float_t samples[4] = {0.22044,  0.440961,         -0.96901,         0.247022};
-    float_t temp_vals[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    depth_t depth;
     uint32_t sz;
     bool first = true;
     
-
     // nodes in linked list represent trees in forest
     node_t * head = NULL;
-    head = (node_t *) malloc(sizeof(temp_vals));
+    head = (node_t *) malloc(NUM_CLASSES);
 
     if (head == NULL) {
         return 1;
@@ -57,14 +61,14 @@ int main(void)
                 current = current->next;
             }
             new_leaf = read_leaf(&fptr1[index]);
-            index += 21;
+            index += leaf_size;
             memcpy(current->val, new_leaf.score, sizeof(new_leaf.score));
             current->next = NULL;
             index = find_next_tree(fptr1, sz, index);
         }
         else {
             new_branch = read_branch(&fptr1[index]);
-            index += 8;
+            index += branch_size;
             if (samples[new_branch.feature] > new_branch.threshold) {
                 index += new_branch.next_node;
             }
@@ -77,10 +81,10 @@ int main(void)
     return 0;
 }
 
-int8_t read_depth(uint8_t* ptr)
+depth_t read_depth(uint8_t* ptr)
 {
-    int8_t d;
-    d = (int8_t)*ptr;
+    depth_t d;
+    d = (depth_t)*ptr;
     return d;
 }
 
@@ -99,7 +103,7 @@ branch_t read_branch(uint8_t* ptr)
     u.t[3] = (*ptr++);
     b.threshold = u.f;
     b.feature = *ptr++;
-    b.next_node = (int16_t)((*ptr++));
+    b.next_node = (int16_t)((*ptr++));                                                      // TODO add case for int32
     b.next_node |= (int16_t)(*ptr++) << 8;
     return b;
 }
@@ -108,8 +112,8 @@ leaf_t read_leaf(uint8_t* ptr)
 {
     leaf_t l;
     l.depth = *ptr++;
-    for (int i = 0; i < 10; i++) {
-        l.score[i] = (int16_t)((*ptr++));
+    for (int i = 0; i < NUM_CLASSES; i++) {
+        l.score[i] = (int16_t)((*ptr++));                                                      // TODO add case for int32
         l.score[i] |= (int16_t)(*ptr++) << 8;
     }
     return l;
@@ -117,17 +121,17 @@ leaf_t read_leaf(uint8_t* ptr)
 
 uint32_t find_next_tree(uint8_t* ptr, uint32_t sz, uint32_t index)
 {
-    int8_t d;
+    depth_t d;
     d = read_depth(&ptr[index]);
     while (d != 1) {
         if (index >= sz) {
             break;
         }
         if (d < 0) {
-            index += 21;
+            index += leaf_size;
         }
         else {
-            index += 8;
+            index += branch_size;
         }
         d = read_depth(&ptr[index]);
     }
@@ -138,24 +142,24 @@ void print_list(node_t * head)
 {
     node_t * current = head;
     int16_t sample_count[NUM_CLASSES];
-    int16_t total = 0;
+    int32_t total = 0;
     int16_t tree_index = 0;
     float_t total_proba[FOREST_SIZE][NUM_CLASSES];
     float_t probs[NUM_CLASSES];
 
     while (current != NULL) {
         for (int i = 0; i < NUM_CLASSES; i++) {
-            printf("%d ", current->val[i]);
+            // printf("%d ", current->val[i]);
             sample_count[i] = (current->val[i]);
             total += current->val[i];
         }
         current = current->next;
-        printf("\n");
+        // printf("\n");
         for (int i = 0; i < NUM_CLASSES; i++) {
             total_proba[tree_index][i] = (float_t)sample_count[i] / total;
-            printf("%f ", total_proba[tree_index][i]);
+            // printf("%f ", total_proba[tree_index][i]);
         }
-        printf("\n\n");
+        // printf("\n\n");
         tree_index++;
         total = 0;
     }

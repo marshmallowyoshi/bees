@@ -115,11 +115,12 @@ def create_array_for_c(all_bytes, forest_structure, metadata, c_file_names='fore
         byte_list = bytes_to_decimal(all_bytes)
     else:
         raise ValueError
-    
+
     with open(metadata, 'r', encoding='utf-8-sig') as f:
+        # read metadata
         for line in f:
-            # if line.startswith('largest_sample_size'):
-            #     largest_sample_size = int(line.split(':')[1].strip())
+            if line.startswith('largest_sample_size'):
+                largest_sample_size = int(line.split(':')[1].strip())
             if line.startswith('feature_count'):
                 feature_count = int(line.split(':')[1].strip())
             elif line.startswith('tree_count'):
@@ -128,10 +129,32 @@ def create_array_for_c(all_bytes, forest_structure, metadata, c_file_names='fore
                 class_count = int(line.split(':')[1].strip())
             elif line.startswith('classes'):
                 classes = [x for x in line.split(':')[1].strip().split(', ')]
-            # elif line.startswith('max_depth'):
-            #     max_depth = int(line.split(':')[1].strip())
+            elif line.startswith('max_depth'):
+                max_depth = int(line.split(':')[1].strip())
+
+    # get types
+    # branch
+    if max_depth < 128:
+        depth_t = 'int8_t'
+    else:
+        depth_t = 'int16_t'
+    if feature_count < 128:
+        feature_t = 'int8_t'
+    else:
+        feature_t = 'int16_t'
+    if len(byte_list) < 32768:
+        next_node_t = 'int16_t'
+    else:
+        next_node_t = 'int32_t'
+    # leaf
+    if largest_sample_size < 32768:
+        score_t = 'int16_t'
+    else:
+        score_t = 'int32_t'
+    
     
     with open(c_file, 'w', encoding='utf-8-sig') as f:
+        # write data
         f.write('#include <stdint.h>\n')
 
         f.write(f'char *classes[{class_count}] = ')
@@ -155,46 +178,35 @@ def create_array_for_c(all_bytes, forest_structure, metadata, c_file_names='fore
 
     with open(h_file, 'w', encoding='utf-8-sig') as f:
         f.write('#include <stdint.h>\n')
+        # Constants
         f.write(f'#define FEATURE_COUNT {feature_count}\n')
         f.write(f'#define FOREST_SIZE {tree_count}\n')
         f.write(f'#define NUM_CLASSES {class_count}\n\n')
 
-        # f.write('typedef structure {\n')
-        # if max_depth < 128:
-        #     f.write('    int8_t depth;\n')
-        # else:
-        #     f.write('    int16_t depth;\n')
-        # f.write('    float threshold;\n')
-        # if feature_count < 256:
-        #     f.write('    uint8_t feature;\n')
-        # else:
-        #     f.write('    uint16_t feature;\n')
-        # if len(byte_list) < 32768:
-        #     f.write('    int16_t next_node;\n')
-        # else:
-        #     f.write('    int32_t next_node;\n')
-        # f.write('} branch_t;\n\n')
+        # Types
+        f.write(f'typedef {depth_t} depth_t;\n')
+        f.write(f'typedef {feature_t} feature_t;\n')
+        f.write(f'typedef {next_node_t} next_node_t;\n')
+        f.write(f'typedef {score_t} score_t;\n\n')
 
-        # f.write('typedef structure {\n')
-        # if max_depth < 128:
-        #     f.write('    int8_t depth;\n')
-        # else:
-        #     f.write('    int16_t depth;\n')
-        # if largest_sample_size < 32768:
-        #     f.write(f'    int16_t value[{class_count}];\n')
-        # else:
-        #     f.write(f'    int32_t value[{class_count}];\n')
+        # Branch Structure
+        f.write('typedef struct {\n')
+        f.write('    depth_t depth;\n')
+        f.write('    float threshold;\n')
+        f.write('    feature_t feature;\n')
+        f.write('    next_node_t next_node;\n')
+        f.write('} branch_t;\n\n')
 
+        # Leaf Structure
+        f.write('typedef struct {\n')
+        f.write('    depth_t depth;\n')
+        f.write('    score_t score[NUM_CLASSES];\n')
+        f.write('} leaf_t;\n\n')
+
+        # Forest Linked List
+        f.write('typedef struct node {\n')
+        f.write('    score_t val[NUM_CLASSES];\n')
+        f.write('    struct node * next;\n')
+        f.write('} node_t;\n\n')
 
     return 0
-
-
-
-
-
-# FILE_NAME = 'temp_forest.csv'
-# BINARY_NAME = 'temp.bin'
-
-# final_bytes = forest_to_binary(FILE_NAME, BINARY_NAME, write_to_file=False)
-
-# create_array_for_c(final_bytes, get_forest_structure(FILE_NAME))
